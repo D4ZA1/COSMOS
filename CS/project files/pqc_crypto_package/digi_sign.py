@@ -3,9 +3,13 @@
 # pqc_crypto_package/digital_signatures.py
 
 import base64
+import binascii
 
 # Import specific algorithm class from the standalone library
 try:
+
+
+
 
 
     # Corrected import name
@@ -32,25 +36,35 @@ def sign_message(message_bytes, signer_dilithium_sk_b64):
         return None
 
 def verify_signature(message_bytes, signature_b64, signer_dilithium_pk_b64):
-    """
-    Verifies a signature using the signer's Dilithium public key (dilithium lib, Dilithium3).
-    """
-    if Dilithium3 is None: return False
-    print(f"PQC_MODULE.digital_signatures: Verifying signature for {len(message_bytes)} bytes with Dilithium3 PK (first 10): {signer_dilithium_pk_b64[:10]}...")
+    if Dilithium3 is None:
+        print("PQC_MODULE.digital_signatures: Dilithium3 library not available for verification.")
+        return False # Return False if library is not available
+    
     try:
         public_key_bytes = base64.b64decode(signer_dilithium_pk_b64)
         signature_bytes = base64.b64decode(signature_b64)
-        # Assuming the API is Dilithium3.verify(pk, message, signature)
-        # Assuming it raises an exception (like ValueError) on failure.
-        Dilithium3.verify(public_key_bytes, message_bytes, signature_bytes)
-        return True # Verification succeeded if no exception was raised
-    except ValueError: # Assuming ValueError on verification failure
-        print(f"PQC_MODULE.digital_signatures: Signature verification failed for Dilithium3 (ValueError).")
-        return False
-    except Exception as e:
-        print(f"PQC_MODULE.digital_signatures: Signature verification encountered an error with Dilithium3 using dilithium lib: {e}")
-        return False
 
+        is_verified_by_lib = Dilithium3.verify(public_key_bytes, message_bytes, signature_bytes)
+        
+        if isinstance(is_verified_by_lib, bool):
+            if is_verified_by_lib:
+                return True
+            else:
+                print("PQC_MODULE.digital_signatures: Signature verification failed by library (returned False).")
+                return False
+        else:
+            print(f"PQC_MODULE.digital_signatures: Unexpected return type from Dilithium3.verify: {type(is_verified_by_lib)}. Assuming failure.")
+            return False
+
+    except ValueError as ve: 
+        print(f"PQC_MODULE.digital_signatures: Signature verification failed for Dilithium3 (ValueError caught - potentially malformed input to lib verify): {ve}")
+        return False
+    except binascii.Error as b64e: # More specific catch for b64 errors
+        print(f"PQC_MODULE.digital_signatures: Base64 decoding error during verification: {b64e}")
+        return False
+    except Exception as e: # Catch-all for other unexpected errors
+        print(f"PQC_MODULE.digital_signatures: Signature verification encountered an unexpected error with Dilithium3: {e}")
+        return False
 if __name__ == '__main__':
     print(f"--- Testing Digital Signatures (Dilithium3 with dilithium lib) ---")
     
